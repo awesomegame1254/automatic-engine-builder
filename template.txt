@@ -1,0 +1,494 @@
+import "engine_sim.mr"
+
+units units()
+constants constants()
+impulse_response_library ir_lib()
+
+label cycle(2 * 360 * units.deg)
+label cr({{ cr }})
+label deck_clearance({{ clearance }})
+label redline({{ redline }})
+label bore ({{ bore }})
+label number_of_cylinders({{ cyl_number }})//does not create cylinder automatically
+label throw ({{ throw }})
+label peak_torque_rpm({{ peak_rpm }})//set less than redline
+label valves_per_cylinder({{ valve_number }})
+label exhaust_primary_length({{ exhaust_length }})
+label number_of_banks({{ bank_number }})///does not create cylinder banks automatically
+//beggining of math bits do not edit
+label stroke (throw * 2)
+label compression_height (32.4)
+label rod_length({{ length }})
+label displacement(0.0)
+label deck_height(compression_height + throw + rod_length + deck_clearance)
+label PT_H(compression_height / 2.0)//do not touch
+label PT_V((((bore * bore) * constants.pi) * PT_H) / 4000.0)//do not touch
+label PS_H((compression_height * 2.5) - PT_H)//do not touch
+label PSOD_V((((bore * bore) * constants.pi) * PS_H) / 4000.0)//do not touch
+label PSI_D(bore - (2.0 * (bore / 15.0)))//do not touch
+label PSID_V((((PSI_D * PSI_D) * constants.pi) * PS_H) / 4000.0)// do not touch 
+label PS_V(PSOD_V - PSID_V)
+label P_V(PT_V + PS_V)//do not touch
+label P_Mm((0.15 * {{ piston }}) / ({{ piston }} / 7.15))
+label piston_mass(P_V * {{ piston }} * P_Mm) //do not touch
+label rod_mass(((rod_length * (bore / 3.5) * (bore / 3)) / 1000.0) * {{ rod }} * ((0.15 * {{ rod }}) / ({{ rod }} / 7.15))) //do not touch
+label CR_W(bore / 3.0)
+label CRJ_D(CR_W)
+label CR_T(bore / 3.5)
+label CRJ_L((CR_T * number_of_cylinders) / number_of_banks)
+label CRJ_V(((constants.pi * (CRJ_D * CRJ_D)) * CRJ_L) / 4000.0)
+label CW_H(throw + CRJ_D)
+label CW_T(CRJ_L)
+label CW_V((CRJ_D * CW_H * CW_T) / 1000.0)
+label CMB_N((number_of_cylinders / number_of_banks) + 1.0) 
+label CMB_L(CR_T * CMB_N)
+label CMB_D(CR_W)
+label CMB_V(((constants.pi * (CMB_D * CMB_D)) * CMB_L) / 4000.0)
+label C_Mm((0.5 * {{ crank }}) / ({{ crank }} / 7.15))
+label C_uM((CRJ_V + CW_V + CMB_V) * {{ crank }} * C_Mm)
+label CC_Mm(0.5)
+label CC_M(C_uM + ((piston_mass + rod_mass) * CC_Mm))
+label crankshaft_mass(C_uM + CC_M)// do not touch
+label FW_T(bore / 4.0 * (number_of_cylinders / number_of_banks))
+label FW_D(stroke * 2.5)
+label FW_V(((constants.pi * (FW_D * FW_D)) * FW_T) / 4000.0)
+label FW_Mm((0.15 * {{ crank }}) / ({{ crank }} / 7.15))
+label flywheel_mass(FW_V * {{ crank }} * FW_Mm)
+label lsa(110)
+label cam_duration({{ duration }})
+label EV_O(((lsa + 0) + (cam_duration / 2.0)) - (180 * units.deg))
+label EV_C(-1.0 * ((lsa + 0) - (cam_duration / 2.0)))
+label IV_O(-1.0 * ((lsa - 0) - (cam_duration / 2.0)))\
+label IV_C(((lsa - 0) + (cam_duration / 2.0)) - (180 * units.deg))
+label cam_lift({{ lift }})// units millimeters
+label IV_D(bore / 2.0)
+label IV_area(((constants.pi * ((IV_D * 0.98) * (IV_D * 0.98))) / 400.0) * valves_per_cylinder) //do not touch
+label IV_flow_max(IV_area * 0.155 * 146.0) //do not touch
+label CHIP_Dm(0.85)
+label CHIPI_Dm(1.00)
+label CHIPI_A(((constants.pi * ((IV_D * 0.98 * CHIP_Dm * CHIPI_Dm) * (IV_D * 0.98 * CHIP_Dm * CHIPI_Dm))) / 400.0) * valves_per_cylinder)
+label CHIPIIV_R(CHIPI_A / IV_area) //do not touch
+label CHIP_A(((constants.pi * ((IV_D * 0.98 * CHIP_Dm) * (IV_D * 0.98 * CHIP_Dm))) / 400.0) * valves_per_cylinder)
+label CHIPIV_R(CHIP_A / IV_area) //do not touch
+label CHIPT_Dm(0.70)
+label CHIPT_A(((constants.pi * ((IV_D * 0.98 * CHIPT_Dm) * (IV_D * 0.98 * CHIPT_Dm))) / 400.0) * valves_per_cylinder) //do not touch
+label CHIPTIV_R(CHIPT_A / IV_area) //do not touch
+label CHIPIV_Ravg((CHIPIIV_R + CHIPIV_R + CHIPTIV_R) / 3.0) //do not touch
+label CHIPTIVRavg_R(CHIPTIV_R / CHIPIV_Ravg) //do not touch
+label CHIPIVRavg_R(CHIPIV_R / CHIPIV_Ravg) //do not touch
+label CHIPIIVRavg_R(CHIPIIV_R / CHIPIV_Ravg) //do not touch
+label EV_D(IV_D * 0.875)
+label EV_area(((constants.pi * ((EV_D * 0.98) * (EV_D * 0.98))) / 400.0) * valves_per_cylinder)
+label EV_flow_max((EV_area * 0.155 * 146.0))//do not touch
+label CHEP_Dm(0.85)
+label CHEPO_Dm(1.00)
+label CHEPO_A(((constants.pi * ((IV_D * 0.98 * CHEP_Dm * CHEPO_Dm) * (IV_D * 0.98 * CHEP_Dm * CHEPO_Dm))) / 400.0) * valves_per_cylinder)
+label CHEPOEV_R(CHEPO_A / EV_area)//do not touch
+label CHEP_A(((constants.pi * ((IV_D * 0.98 * CHEP_Dm) * (IV_D * 0.98 * CHEP_Dm))) / 400.0) * valves_per_cylinder)
+label CHEPEV_R(CHEP_A / EV_area)//do not touch
+label CHEPT_Dm(0.70)
+label CHEPT_A(((constants.pi * ((IV_D * 0.98 * CHEPT_Dm) * (IV_D * 0.98 * CHEPT_Dm))) / 400.0) * valves_per_cylinder)//do not touch
+label CHEPTEV_R(CHEPT_A / EV_area)//do not touch
+label CHEPEV_Ravg((CHEPOEV_R + CHEPEV_R + CHEPTEV_R) / 3.0)//do not touch
+label CHEPTEVRavg_R(CHEPTEV_R / CHEPEV_Ravg)//do not tocuh
+label CHEPEVRavg_R(CHEPEV_R / CHEPEV_Ravg)// do not touch
+label CHEPOEVRavg_R(CHEPOEV_R / CHEPEV_Ravg)// do not tocuh
+label EC_Dcc((((((bore / 2.0) * (bore / 2.0)) * constants.pi) * stroke) / 1000.0))
+label CHIP_Vm(0.25)
+label CHIP_V(EC_Dcc * CHIP_Vm)//do not touch
+label CHEP_Vm(CHEPT_A / CHIPT_A)//do not touch
+label CHEP_V(CHIP_V * CHEP_Vm)//do not touch
+label C_Fmu(((crankshaft_mass / 1000.0) * 9.80665) * (0.0015 * CMB_N))
+label CP_D(stroke * 0.75)
+label CP_T(bore * 0.33)
+label CP_V(((constants.pi * (CP_D * CP_D)) * CP_T) / 4000.0)
+label CP_M(CP_V * {{ crank }} * C_Mm)
+label CP_Fmu(((CP_M / 1000.0) * 9.80665) * 0.0015)
+label CHB_M(CC_M / number_of_cylinders)
+label CHB_Fmu(((CHB_M / 1000.0) * 9.80665) * 0.0015)
+label FW_Fmu(((flywheel_mass / 1000.0) * 9.80665) * 0.0015)
+label CSS_D(((cam_lift + cam_lift) / 2.0) * 3.0)
+label CSS_L(CRJ_L + CMB_L)
+label CSS_V(((constants.pi * (CSS_D * CSS_D)) * CSS_L) / 4000.0)
+label CS_Mm((0.5 * {{ cam }}) / ({{ cam }} / 7.15))
+label CSS_M(CSS_V * {{ cam }} * CS_Mm)
+label CSIL_T(IV_D / 2.0)
+label CSIL_H(cam_lift)
+label CSIL_N((valves_per_cylinder * number_of_cylinders) / number_of_banks)
+label CSIL_V(((CSS_D * CSIL_H * CSIL_T) / 2000.0) * CSIL_N)
+label CSIL_M(CSIL_V * {{ cam }} * CS_Mm)
+label CSEL_N((valves_per_cylinder * number_of_cylinders) / number_of_banks)
+label CSEL_T(EV_D / 2.0)
+label CSEL_H(cam_lift)
+label CSEL_V(((CSS_D * CSEL_H * CSEL_T) / 2000.0) * CSEL_N)
+label CSEL_M(CSEL_V * {{ cam }} * CS_Mm)
+label CS_M(CSS_M + ((CSIL_M + CSEL_M) / 2.0))
+label CSB_N((number_of_cylinders / number_of_banks) + 1.0)
+label CS_Fmu((((CS_M / 1000.0) * 9.80665) * (0.0015 * CSB_N)) * number_of_banks)
+label CSG_D(CP_D * 2.0)
+label CSG_T(CP_T) 
+label CSG_V(((constants.pi * (CSG_D * CSG_D)) * CSG_T) / 4000.0)
+label CSG_Mm((0.5 * {{ cam }}) / ({{ cam }} / 7.15))
+label CSG_M(CSG_V * {{ cam }} * CSG_Mm)
+label CSG_Fmu((((CSG_M / 1000.0) * 9.80665) * 0.0015) * number_of_banks)
+label friction(C_Fmu + CP_Fmu + CHB_Fmu + FW_Fmu + CS_Fmu + CSG_Fmu)//do not touch
+label CW_MOI(((1.0 / 12.0) * (((CW_V * {{ crank }}) / ((number_of_cylinders / number_of_banks) * 2.0)) / 1000.0) * (4.0 * ((CW_H / 1000.0) * (CW_H / 1000.0)) + ((CRJ_D / 1000.0) * (CRJ_D / 1000.0)))) * ((number_of_cylinders / number_of_banks) * 2.0))
+label CRJ_MOI(((((CRJ_V * {{ rod }}) / (number_of_cylinders / number_of_banks)) / 1000.0) * ((throw / 1000.0) * (throw / 1000.0))) * (number_of_cylinders / number_of_banks))
+label CC_MOI(((1.0 / 12.0) * ((CC_M / 1000.0) / ((number_of_cylinders / number_of_banks) * 2.0)) * (4.0 * ((CC_H / 1000.0) * (CC_H / 1000.0)) + ((CC_W / 1000.0) * (CC_W / 1000.0)))) * ((number_of_cylinders / number_of_banks) * 2.0))
+label CMB_MOI((1.0 / 2.0) * (((CMB_V * {{ crank }}) / 1000.0) * ((CMB_D / 2000.0) * (CMB_D / 2000.0))))
+label C_MOI(CW_MOI + CRJ_MOI + CC_MOI + CMB_MOI)
+label FW_MOI((1.0 / 2.0) * ((flywheel_mass / 1000.0) * ((FW_D / 2000.0) * (FW_D / 2000.0))))
+label CSS_MOI((1.0 / 2.0) * (CS_M / 1000.0) * ((CSS_D / 2000.0) * (CSS_D / 2000.0)))
+label CSIL_MOI((1.0 / 12.0) * (CSIL_M / 1000.0) * ((4.0 * ((CSIL_H / 1000.0) * (CSIL_H / 1000.0))) + ((CSIL_T / 1000.0) * (CSIL_T / 1000.0))))
+label CSEL_MOI((1.0 / 12.0) * (CSEL_M / 1000.0) * ((4.0 * ((CSEL_H / 1000.0) * (CSEL_H / 1000.0))) + ((CSEL_T / 1000.0) * (CSEL_T / 1000.0))))
+label CSG_MOI(((1.0 / 2.0) * (CSG_M / 1000.0) * ((CSG_D / 2000.0) * (CSG_D / 2000.0))) * number_of_banks)
+label CR_MOIC((((1.0 / 12.0) * (CR_M / 1000.0)) * ((4.0 * (((rod_length + throw) / 1000.0) * ((rod_length + throw) / 1000.0))) + ((CR_W / 1000.0) * (CR_W / 1000.0)))) * number_of_cylinders)
+label CP_MOI((1.0 / 2.0) * (CP_M / 1000.0) * ((CP_D / 2000.0) * (CP_D / 2000.0)))
+label CHB_MOI((CHB_M / 1000.0) * ((CP_D / 2000.0) * (CP_D / 2000.0)))
+label inertia(C_MOI + FW_MOI + CSS_MOI + CSIL_MOI + CSEL_MOI + CSG_MOI + CR_MOIC + CP_MOI + CHB_MOI)//do not touch
+label rod_inertia(((1.0 / 12.0) * (rod_mass / 1000.0)) * (((rod_length / 1000.0) * (rod_length / 1000.0)) + ((CR_W / 1000.0) * (CR_W / 1000.0))))//do not touch
+label intake_runner_area(CHIPI_A)//do not touch
+label intake_plenum_area((intake_runner_area * number_of_cylinders) / 1)//do not touch
+label E_Dcc(EC_Dcc * number_of_cylinders)
+label IMP_Vm(1.0)
+label intake_plenum_volume((E_Dcc * IMP_Vm) / 1)//do not touch
+label CHIPT_Qmax(CHIPT_A * 0.155 * 146.0)
+label intake_runner_rate(CHIPT_Qmax)
+label intake_plenum_rate((intake_runner_rate * number_of_cylinders) / 1)//do not touch
+label IMR_RWT_N(12.0) 
+label CHIP_L((CHIP_V / CHIPT_A) * 10.0)
+label intake_runner_length((((((1.0 / (peak_torque_rpm / 60.0)) * ((720.0 - ((cam_duration / units.deg) + 0)) / 360.0) * 1300.0) / 2.0) / IMR_RWT_N) * 304.8) - CHIP_L)//do not touch
+label idle_throttle(0.999)
+label idle_rate(0.0)
+label EV_Oatdc(((180.0 * units.deg) - (EV_O + (0 / 2.0))) / units.deg)
+label CHEP_L((CHEP_V / CHEPT_A) * 10.0)
+label exhaust_header_primary_length((((((850.0 * (360.0 - EV_Oatdc)) / peak_torque_rpm) - 3.0) * 25.4) - CHEP_L) * 10.0)//do not touch
+label EHC_L((exhaust_header_primary_length + CHEP_L) / 2.0)
+label exhaust_length((EHC_L + exhaust_primary_length))//do not touch
+label EC_Dci(EC_Dcc * 0.061024)
+label EHPT_A(((EC_Dci * peak_torque_rpm) / 88200.0) * 6.4516)
+label EHC_A(EHPT_A / 1.0)
+label exhaust_plenum_area(EHC_A)//do not touch
+label exhaust_volume((exhaust_plenum_area * exhaust_primary_length) / 10.0)//do not touch
+label CHEPT_Qmax(CHEPT_A * 0.155 * 146.0)
+label exhaust_header_primary_flow(CHEPT_Qmax)
+label exhaust_collector_flow((exhaust_header_primary_flow * number_of_cylinders) / 1)//do not touch
+
+public node bmw_distributor {
+    input wires;
+    input timing_curve;
+    input rev_limit: redline * units.rpm;
+    alias output __out:
+        ignition_module(timing_curve: timing_curve, rev_limit: rev_limit)
+			{{ wires|safe }};
+}
+
+private node wires {
+	{{ ignition|safe }}
+}
+
+private node add_sym_sample {
+    input angle;
+    input lift;
+    input this;
+    alias output __out: this;
+
+    this.add_sample(angle * units.deg, lift * units.thou)
+    this.add_sample(-angle * units.deg, lift * units.thou)
+}
+
+public node m52b28_lobe_profile_int {
+    alias output __out:
+        harmonic_cam_lobe(
+            duration_at_50_thou: cam_duration * units.deg,
+            gamma: 1,
+            lift: cam_lift * units.mm,
+            steps: 100
+        );
+}
+
+public node m52b28_lobe_profile_exh {
+    alias output __out:
+        harmonic_cam_lobe(
+            duration_at_50_thou: cam_duration * units.deg,
+            gamma: 1,
+            lift: cam_lift * units.mm,
+            steps: 100
+        );
+}
+
+public node bmw_camshaft_builder {
+    input lobe_profile: m52b28_lobe_profile_int();
+	input ex_lobe_profile: m52b28_lobe_profile_exh();
+    input intake_lobe_profile: lobe_profile;
+    input exhaust_lobe_profile: ex_lobe_profile;
+    input intake_lobe_center: (((IV_C + (180.0 * units.deg) -IV_O) / 2.0) + (360.0 * units.deg));
+    input exhaust_lobe_center: ((EV_C + (540.0 * units.deg) - EV_O) / 2.0) * units.deg;
+    input advance: 0.0 * units.deg;
+    input base_radius: ((((cam_lift + cam_lift) / 2.0) * 3.0) / 2);
+
+	{{ output_cam|safe }}
+
+    camshaft_parameters params(
+        advance: advance,
+        base_radius: base_radius * units.mm
+    )
+
+	{{ camshaft|safe }}
+
+
+    label rot60(60 * units.deg)
+    label rot90(90 * units.deg)
+    label rot120(120 * units.deg)
+    label rot180(180 * units.deg)
+    label rot360(360 * units.deg)
+
+	{{ intake_cam|safe }}
+
+	{{ exhaust_cam|safe }}
+}
+
+private node add_flow_sample {
+    input lift;
+    input flow;
+    input this;
+    alias output __out: this;
+
+    this.add_sample(lift * units.mm, k_28inH2O(flow))
+}
+
+public node bmw_m52b28_head {
+    input intake_camshaft;
+    input exhaust_camshaft;
+    input chamber_volume: (( - displacement * cr - (((deck_height - ( throw + compression_height + rod_length)) * ((bore / 2) * (bore / 2 )) * constants.pi) / 1000) - displacement + ((((( deck_height + throw) - compression_height) - rod_length) * (( bore / 2) * ( bore / 2)) * constants.pi) / 1000)) / (cr - 1)) * units.cc;
+    input flip_display: false;
+	
+	input flow_attenuation: 1.0;
+    input lift_scale: 1.0;
+    alias output __out: head;
+
+
+    label AIVCB(IV_area / 10.0)
+    label AIVC_0(AIVCB * 0.0)
+    label AIVC_1(AIVCB * 1.0)
+    label AIVC_2(AIVCB * 2.0)
+    label AIVC_3(AIVCB * 3.0)
+    label AIVC_4(AIVCB * 4.0)
+    label AIVC_5(AIVCB * 5.0)
+    label AIVC_6(AIVCB * 6.0)
+    label AIVC_7(AIVCB * 7.0)
+    label AIVC_8(AIVCB * 8.0)
+    label AIVC_9(AIVCB * 9.0)
+    label AIVC_10(AIVCB * 10.0)
+    label AIVC_11(AIVCB * 11.0)
+    label AIVC_12(AIVCB * 12.0)
+    label AIVC_13(AIVCB * 13.0)
+    label AIVC_14(AIVCB * 14.0)
+    label AIVC_15(AIVCB * 15.0)
+    label AIVC_16(AIVCB * 16.0)
+    label AIVC_17(AIVCB * 17.0)
+    label AIVC_18(AIVCB * 18.0)
+    label AIVC_19(AIVCB * 19.0)
+    label AIVC_20(AIVCB * 20.0)
+
+    label AEVCB(IV_area / 10.0)
+    label AEVC_0(AEVCB * 0.0)
+    label AEVC_1(AEVCB * 1.0)
+    label AEVC_2(AEVCB * 2.0)
+    label AEVC_3(AEVCB * 3.0)
+    label AEVC_4(AEVCB * 4.0)
+    label AEVC_5(AEVCB * 5.0)
+    label AEVC_6(AEVCB * 6.0)
+    label AEVC_7(AEVCB * 7.0)
+    label AEVC_8(AEVCB * 8.0)
+    label AEVC_9(AEVCB * 9.0)
+    label AEVC_10(AEVCB * 10.0)
+    label AEVC_11(AEVCB * 11.0)
+    label AEVC_12(AEVCB * 12.0)
+    label AEVC_13(AEVCB * 13.0)
+    label AEVC_14(AEVCB * 14.0)
+    label AEVC_15(AEVCB * 15.0)
+    label AEVC_16(AEVCB * 16.0)
+    label AEVC_17(AEVCB * 17.0)
+    label AEVC_18(AEVCB * 18.0)
+    label AEVC_19(AEVCB * 19.0)
+    label AEVC_20(AEVCB * 20.0)
+
+    function intake_flow(1 * units.mm)
+    intake_flow
+        .add_flow_sample(0, 0)
+        .add_flow_sample(1, IV_flow_max * ((CHIPIV_Ravg + 0.1250000000000 + (AIVC_1 / IV_area)) / ((IV_area / AIVC_1) + (CHIPTIVRavg_R * (AIVC_1 / CHIPT_A)) + (CHIPIVRavg_R * (AIVC_1 / CHIP_A)) + (CHIPIIVRavg_R * (AIVC_1 / CHIPI_A)))))
+        .add_flow_sample(2, IV_flow_max * ((CHIPIV_Ravg + 0.2227246795350 + (AIVC_2 / IV_area)) / ((IV_area / AIVC_2) + (CHIPTIVRavg_R * (AIVC_2 / CHIPT_A)) + (CHIPIVRavg_R * (AIVC_2 / CHIP_A)) + (CHIPIIVRavg_R * (AIVC_2 / CHIPI_A)))))
+        .add_flow_sample(3, IV_flow_max * ((CHIPIV_Ravg + 0.3122561916210 + (AIVC_3 / IV_area)) / ((IV_area / AIVC_3) + (CHIPTIVRavg_R * (AIVC_3 / CHIPT_A)) + (CHIPIVRavg_R * (AIVC_3 / CHIP_A)) + (CHIPIIVRavg_R * (AIVC_3 / CHIPI_A)))))
+        .add_flow_sample(4, IV_flow_max * ((CHIPIV_Ravg + 0.3968502629920 + (AIVC_4 / IV_area)) / ((IV_area / AIVC_4) + (CHIPTIVRavg_R * (AIVC_4 / CHIPT_A)) + (CHIPIVRavg_R * (AIVC_4 / CHIP_A)) + (CHIPIIVRavg_R * (AIVC_4 / CHIPI_A)))))
+        .add_flow_sample(5, IV_flow_max * ((CHIPIV_Ravg + 0.4779528070820 + (AIVC_5 / IV_area)) / ((IV_area / AIVC_5) + (CHIPTIVRavg_R * (AIVC_5 / CHIPT_A)) + (CHIPIVRavg_R * (AIVC_5 / CHIP_A)) + (CHIPIIVRavg_R * (AIVC_5 / CHIPI_A)))))
+        .add_flow_sample(6, IV_flow_max * ((CHIPIV_Ravg + 0.5563772816930 + (AIVC_6 / IV_area)) / ((IV_area / AIVC_6) + (CHIPTIVRavg_R * (AIVC_6 / CHIPT_A)) + (CHIPIVRavg_R * (AIVC_6 / CHIP_A)) + (CHIPIIVRavg_R * (AIVC_6 / CHIPI_A)))))
+        .add_flow_sample(7, IV_flow_max * ((CHIPIV_Ravg + 0.6326425231000 + (AIVC_7 / IV_area)) / ((IV_area / AIVC_7) + (CHIPTIVRavg_R * (AIVC_7 / CHIPT_A)) + (CHIPIVRavg_R * (AIVC_7 / CHIP_A)) + (CHIPIIVRavg_R * (AIVC_7 / CHIPI_A)))))
+        .add_flow_sample(8, IV_flow_max * ((CHIPIV_Ravg + 0.7071067811870 + (AIVC_8 / IV_area)) / ((IV_area / AIVC_8) + (CHIPTIVRavg_R * (AIVC_8 / CHIPT_A)) + (CHIPIVRavg_R * (AIVC_8 / CHIP_A)) + (CHIPIIVRavg_R * (AIVC_8 / CHIPI_A)))))
+        .add_flow_sample(9, IV_flow_max * ((CHIPIV_Ravg + 0.7800314336440 + (AIVC_9 / IV_area)) / ((IV_area / AIVC_9) + (CHIPTIVRavg_R * (AIVC_9 / CHIPT_A)) + (CHIPIVRavg_R * (AIVC_9 / CHIP_A)) + (CHIPIIVRavg_R * (AIVC_9 / CHIPI_A)))))
+        .add_flow_sample(10, IV_flow_max * ((CHIPIV_Ravg + 0.851615086322 + (AIVC_10 / IV_area)) / ((IV_area / AIVC_10) + (CHIPTIVRavg_R * (AIVC_10 / CHIPT_A)) + (CHIPIVRavg_R * (AIVC_10 / CHIP_A)) + (CHIPIIVRavg_R * (AIVC_10 / CHIPI_A)))))
+        .add_flow_sample(11, IV_flow_max * ((CHIPIV_Ravg + 0.922013437705 + (AIVC_11 / IV_area)) / ((IV_area / AIVC_11) + (CHIPTIVRavg_R * (AIVC_11 / CHIPT_A)) + (CHIPIVRavg_R * (AIVC_11 / CHIP_A)) + (CHIPIIVRavg_R * (AIVC_11 / CHIPI_A)))))
+        .add_flow_sample(12, IV_flow_max * ((CHIPIV_Ravg + 0.991351614125 + (AIVC_12 / IV_area)) / ((IV_area / AIVC_12) + (CHIPTIVRavg_R * (AIVC_12 / CHIPT_A)) + (CHIPIVRavg_R * (AIVC_12 / CHIP_A)) + (CHIPIIVRavg_R * (AIVC_12 / CHIPI_A)))))
+        .add_flow_sample(13, IV_flow_max * ((CHIPIV_Ravg + 1.059732222790 + (AIVC_13 / IV_area)) / ((IV_area / AIVC_13) + (CHIPTIVRavg_R * (AIVC_13 / CHIPT_A)) + (CHIPIVRavg_R * (AIVC_13 / CHIP_A)) + (CHIPIIVRavg_R * (AIVC_13 / CHIPI_A)))))
+        .add_flow_sample(14, IV_flow_max * ((CHIPIV_Ravg + 1.127240825740 + (AIVC_14 / IV_area)) / ((IV_area / AIVC_14) + (CHIPTIVRavg_R * (AIVC_14 / CHIPT_A)) + (CHIPIVRavg_R * (AIVC_14 / CHIP_A)) + (CHIPIIVRavg_R * (AIVC_14 / CHIPI_A)))))
+        .add_flow_sample(15, IV_flow_max * ((CHIPIV_Ravg + 1.193949786510 + (AIVC_15 / IV_area)) / ((IV_area / AIVC_15) + (CHIPTIVRavg_R * (AIVC_15 / CHIPT_A)) + (CHIPIVRavg_R * (AIVC_15 / CHIP_A)) + (CHIPIIVRavg_R * (AIVC_15 / CHIPI_A)))))
+        .add_flow_sample(16, IV_flow_max * ((CHIPIV_Ravg + 1.259921049890 + (AIVC_16 / IV_area)) / ((IV_area / AIVC_16) + (CHIPTIVRavg_R * (AIVC_16 / CHIPT_A)) + (CHIPIVRavg_R * (AIVC_16 / CHIP_A)) + (CHIPIIVRavg_R * (AIVC_16 / CHIPI_A)))))
+        .add_flow_sample(17, IV_flow_max * ((CHIPIV_Ravg + 1.325208198940 + (AIVC_17 / IV_area)) / ((IV_area / AIVC_17) + (CHIPTIVRavg_R * (AIVC_17 / CHIPT_A)) + (CHIPIVRavg_R * (AIVC_17 / CHIP_A)) + (CHIPIIVRavg_R * (AIVC_17 / CHIPI_A)))))
+        .add_flow_sample(18, IV_flow_max * ((CHIPIV_Ravg + 1.389858008690 + (AIVC_18 / IV_area)) / ((IV_area / AIVC_18) + (CHIPTIVRavg_R * (AIVC_18 / CHIPT_A)) + (CHIPIVRavg_R * (AIVC_18 / CHIP_A)) + (CHIPIIVRavg_R * (AIVC_18 / CHIPI_A)))))
+        .add_flow_sample(19, IV_flow_max * ((CHIPIV_Ravg + 1.453911640940 + (AIVC_19 / IV_area)) / ((IV_area / AIVC_19) + (CHIPTIVRavg_R * (AIVC_19 / CHIPT_A)) + (CHIPIVRavg_R * (AIVC_19 / CHIP_A)) + (CHIPIIVRavg_R * (AIVC_19 / CHIPI_A)))))
+        .add_flow_sample(20, IV_flow_max * ((CHIPIV_Ravg + 1.517405577510 + (AIVC_20 / IV_area)) / ((IV_area / AIVC_20) + (CHIPTIVRavg_R * (AIVC_20 / CHIPT_A)) + (CHIPIVRavg_R * (AIVC_20 / CHIP_A)) + (CHIPIIVRavg_R * (AIVC_20 / CHIPI_A)))))
+
+    function exhaust_flow(1 * units.mm)
+    exhaust_flow
+        .add_flow_sample(0, 0)
+        .add_flow_sample(1, EV_flow_max * ((CHEPEV_Ravg + 0.1250000000000 + (AEVC_1 / EV_area)) / ((EV_area / AEVC_1) + (CHEPTEVRavg_R * (AEVC_1 / CHEPT_A)) + (CHEPEVRavg_R * (AEVC_1 / CHEP_A)) + (CHEPOEVRavg_R * (AEVC_1 / CHEPO_A)))))
+        .add_flow_sample(2, EV_flow_max * ((CHEPEV_Ravg + 0.2227246795350 + (AEVC_2 / EV_area)) / ((EV_area / AEVC_2) + (CHEPTEVRavg_R * (AEVC_2 / CHEPT_A)) + (CHEPEVRavg_R * (AEVC_2 / CHEP_A)) + (CHEPOEVRavg_R * (AEVC_2 / CHEPO_A)))))
+        .add_flow_sample(3, EV_flow_max * ((CHEPEV_Ravg + 0.3122561916210 + (AEVC_3 / EV_area)) / ((EV_area / AEVC_3) + (CHEPTEVRavg_R * (AEVC_3 / CHEPT_A)) + (CHEPEVRavg_R * (AEVC_3 / CHEP_A)) + (CHEPOEVRavg_R * (AEVC_3 / CHEPO_A)))))
+        .add_flow_sample(4, EV_flow_max * ((CHEPEV_Ravg + 0.3968502629920 + (AEVC_4 / EV_area)) / ((EV_area / AEVC_4) + (CHEPTEVRavg_R * (AEVC_4 / CHEPT_A)) + (CHEPEVRavg_R * (AEVC_4 / CHEP_A)) + (CHEPOEVRavg_R * (AEVC_4 / CHEPO_A)))))
+        .add_flow_sample(5, EV_flow_max * ((CHEPEV_Ravg + 0.4779528070820 + (AEVC_5 / EV_area)) / ((EV_area / AEVC_5) + (CHEPTEVRavg_R * (AEVC_5 / CHEPT_A)) + (CHEPEVRavg_R * (AEVC_5 / CHEP_A)) + (CHEPOEVRavg_R * (AEVC_5 / CHEPO_A)))))
+        .add_flow_sample(6, EV_flow_max * ((CHEPEV_Ravg + 0.5563772816930 + (AEVC_6 / EV_area)) / ((EV_area / AEVC_6) + (CHEPTEVRavg_R * (AEVC_6 / CHEPT_A)) + (CHEPEVRavg_R * (AEVC_6 / CHEP_A)) + (CHEPOEVRavg_R * (AEVC_6 / CHEPO_A)))))
+        .add_flow_sample(7, EV_flow_max * ((CHEPEV_Ravg + 0.6326425231000 + (AEVC_7 / EV_area)) / ((EV_area / AEVC_7) + (CHEPTEVRavg_R * (AEVC_7 / CHEPT_A)) + (CHEPEVRavg_R * (AEVC_7 / CHEP_A)) + (CHEPOEVRavg_R * (AEVC_7 / CHEPO_A)))))
+        .add_flow_sample(8, EV_flow_max * ((CHEPEV_Ravg + 0.7071067811870 + (AEVC_8 / EV_area)) / ((EV_area / AEVC_8) + (CHEPTEVRavg_R * (AEVC_8 / CHEPT_A)) + (CHEPEVRavg_R * (AEVC_8 / CHEP_A)) + (CHEPOEVRavg_R * (AEVC_8 / CHEPO_A)))))
+        .add_flow_sample(9, EV_flow_max * ((CHEPEV_Ravg + 0.7800314336440 + (AEVC_9 / EV_area)) / ((EV_area / AEVC_9) + (CHEPTEVRavg_R * (AEVC_9 / CHEPT_A)) + (CHEPEVRavg_R * (AEVC_9 / CHEP_A)) + (CHEPOEVRavg_R * (AEVC_9 / CHEPO_A)))))
+        .add_flow_sample(10, EV_flow_max * ((CHEPEV_Ravg + 0.851615086322 + (AEVC_10 / EV_area)) / ((EV_area / AEVC_10) + (CHEPTEVRavg_R * (AEVC_10 / CHEPT_A)) + (CHEPEVRavg_R * (AEVC_10 / CHEP_A)) + (CHEPOEVRavg_R * (AEVC_10 / CHEPO_A)))))
+        .add_flow_sample(11, EV_flow_max * ((CHEPEV_Ravg + 0.922013437705 + (AEVC_11 / EV_area)) / ((EV_area / AEVC_11) + (CHEPTEVRavg_R * (AEVC_11 / CHEPT_A)) + (CHEPEVRavg_R * (AEVC_11 / CHEP_A)) + (CHEPOEVRavg_R * (AEVC_11 / CHEPO_A)))))
+        .add_flow_sample(12, EV_flow_max * ((CHEPEV_Ravg + 0.991351614125 + (AEVC_12 / EV_area)) / ((EV_area / AEVC_12) + (CHEPTEVRavg_R * (AEVC_12 / CHEPT_A)) + (CHEPEVRavg_R * (AEVC_12 / CHEP_A)) + (CHEPOEVRavg_R * (AEVC_12 / CHEPO_A)))))
+        .add_flow_sample(13, EV_flow_max * ((CHEPEV_Ravg + 1.059732222790 + (AEVC_13 / EV_area)) / ((EV_area / AEVC_13) + (CHEPTEVRavg_R * (AEVC_13 / CHEPT_A)) + (CHEPEVRavg_R * (AEVC_13 / CHEP_A)) + (CHEPOEVRavg_R * (AEVC_13 / CHEPO_A)))))
+        .add_flow_sample(14, EV_flow_max * ((CHEPEV_Ravg + 1.127240825740 + (AEVC_14 / EV_area)) / ((EV_area / AEVC_14) + (CHEPTEVRavg_R * (AEVC_14 / CHEPT_A)) + (CHEPEVRavg_R * (AEVC_14 / CHEP_A)) + (CHEPOEVRavg_R * (AEVC_14 / CHEPO_A)))))
+        .add_flow_sample(15, EV_flow_max * ((CHEPEV_Ravg + 1.193949786510 + (AEVC_15 / EV_area)) / ((EV_area / AEVC_15) + (CHEPTEVRavg_R * (AEVC_15 / CHEPT_A)) + (CHEPEVRavg_R * (AEVC_15 / CHEP_A)) + (CHEPOEVRavg_R * (AEVC_15 / CHEPO_A)))))
+        .add_flow_sample(16, EV_flow_max * ((CHEPEV_Ravg + 1.259921049890 + (AEVC_16 / EV_area)) / ((EV_area / AEVC_16) + (CHEPTEVRavg_R * (AEVC_16 / CHEPT_A)) + (CHEPEVRavg_R * (AEVC_16 / CHEP_A)) + (CHEPOEVRavg_R * (AEVC_16 / CHEPO_A)))))
+        .add_flow_sample(17, EV_flow_max * ((CHEPEV_Ravg + 1.325208198940 + (AEVC_17 / EV_area)) / ((EV_area / AEVC_17) + (CHEPTEVRavg_R * (AEVC_17 / CHEPT_A)) + (CHEPEVRavg_R * (AEVC_17 / CHEP_A)) + (CHEPOEVRavg_R * (AEVC_17 / CHEPO_A)))))
+        .add_flow_sample(18, EV_flow_max * ((CHEPEV_Ravg + 1.389858008690 + (AEVC_18 / EV_area)) / ((EV_area / AEVC_18) + (CHEPTEVRavg_R * (AEVC_18 / CHEPT_A)) + (CHEPEVRavg_R * (AEVC_18 / CHEP_A)) + (CHEPOEVRavg_R * (AEVC_18 / CHEPO_A)))))
+        .add_flow_sample(19, EV_flow_max * ((CHEPEV_Ravg + 1.453911640940 + (AEVC_19 / EV_area)) / ((EV_area / AEVC_19) + (CHEPTEVRavg_R * (AEVC_19 / CHEPT_A)) + (CHEPEVRavg_R * (AEVC_19 / CHEP_A)) + (CHEPOEVRavg_R * (AEVC_19 / CHEPO_A)))))
+        .add_flow_sample(20, EV_flow_max * ((CHEPEV_Ravg + 1.517405577510 + (AEVC_20 / EV_area)) / ((EV_area / AEVC_20) + (CHEPTEVRavg_R * (AEVC_20 / CHEPT_A)) + (CHEPEVRavg_R * (AEVC_20 / CHEP_A)) + (CHEPOEVRavg_R * (AEVC_20 / CHEPO_A)))))
+
+		
+    cylinder_head head(
+        chamber_volume: chamber_volume,
+        intake_runner_cross_section_area: CHIPT_A * units.cm2,
+        intake_runner_volume: CHIP_V * units.cc,
+        exhaust_runner_cross_section_area: CHEPT_A * units.cm2,
+        exhaust_runner_volume: CHEP_V * units.cc,
+
+        intake_port_flow: intake_flow,
+        exhaust_port_flow: exhaust_flow,
+        intake_camshaft: intake_camshaft,
+        exhaust_camshaft: exhaust_camshaft,
+        flip_display: flip_display
+    )
+}
+
+public node M52B28 {
+    alias output __out: engine;
+
+    engine engine(
+        name: "{{ name }}",
+        starter_torque: 300 * units.lb_ft,
+        starter_speed: 500 * units.rpm,
+        redline: redline * units.rpm,
+        fuel: fuel(
+            max_turbulence_effect: 4.0
+        ),
+        throttle_gamma: 2.0
+    )
+
+    wires wires()
+
+    crankshaft c0(
+        throw: throw * units.mm,
+        flywheel_mass: flywheel_mass * units.kg,
+        mass: crankshaft_mass * units.g,
+        friction_torque: friction * units.Nm,
+        moment_of_inertia: inertia,
+        position_x: 0.0,
+        position_y: 0.0,
+        tdc: 90 + {{ crank_angle }} * units.deg
+    )
+
+	{{ rod_journal|safe }}
+	
+    c0
+		{{ add_rod_journal|safe }}
+
+    piston_parameters piston_params(
+        mass: piston_mass * units.g,
+        //blowby: k_28inH2O(0.1),
+        compression_height: compression_height * units.mm,
+        wrist_pin_position: 0.0,
+        displacement: displacement
+    )
+
+    connecting_rod_parameters cr_params(
+        mass: rod_mass * units.g,
+        moment_of_inertia: rod_inertia,
+        center_of_mass: 0.0,
+        length: rod_length * units.mm
+    )
+
+    cylinder_bank_parameters bank_params(
+        bore: bore * units.mm,
+        deck_height: deck_height * units.mm
+    )
+
+    intake intake_1(
+        plenum_cross_section_area: intake_plenum_area * units.cm2,
+        plenum_volume: intake_plenum_volume * units.cc,
+        intake_flow_rate: k_28inH2O(intake_plenum_rate),
+        runner_length: intake_runner_length * units.mm,
+        runner_flow_rate: k_28inH2O(intake_runner_rate),
+        idle_throttle_plate_position: idle_throttle,
+        idle_flow_rate: k_carb(idle_rate),
+        velocity_decay: 1
+    )
+
+    exhaust_system_parameters es_params(
+        length: exhaust_length * units.mm,
+        collector_cross_section_area: exhaust_plenum_area * units.cm2,
+        volume: exhaust_volume * units.cc,
+        outlet_flow_rate: k_28inH2O(exhaust_collector_flow),
+        primary_tube_length: exhaust_header_primary_length * units.mm,
+        primary_flow_rate: k_28inH2O(exhaust_header_primary_flow),
+        velocity_decay: 1
+    )
+
+    exhaust_system exhaust0(es_params, audio_volume: 1, impulse_response: ir_lib.default_0)
+ 
+	{{ cyl_and_bank|safe}}
+
+    engine
+		{{ add_bank|safe }}
+
+    engine.add_crankshaft(c0)
+
+    bmw_camshaft_builder camshaft(
+	    lobe_profile: m52b28_lobe_profile_int(),
+		ex_lobe_profile: m52b28_lobe_profile_exh()
+	)
+
+	{{ cylinder_head|safe }}
+
+    function timing_curve(1000 * units.rpm)
+    timing_curve
+        .add_sample(0000 * units.rpm, 10 * units.deg)
+        .add_sample(1000 * units.rpm, 15 * units.deg)
+        .add_sample(2000 * units.rpm, 25 * units.deg)
+        .add_sample(3000 * units.rpm, 40 * units.deg)
+        .add_sample(4000 * units.rpm, 45 * units.deg)
+        .add_sample(5000 * units.rpm, 45 * units.deg)
+        .add_sample(6000 * units.rpm, 45 * units.deg)
+
+    engine.add_ignition_module(
+        bmw_distributor(
+            wires: wires,
+            timing_curve: timing_curve,
+            rev_limit: redline * units.rpm
+        ))
+}
+
+public node main {
+    set_engine(M52B28())
+    set_vehicle(vehicle())
+    set_transmission(default_transmission())
+}
+
+main()
